@@ -20,7 +20,7 @@ BinsIncorrectCongruent = {'B9, 3(9)'}
 BinsCorrectIncongruent = {'B8, 3(2)'}
 BinsIncorrectIncongruent = {'B5, 3(8)'}
 XcelFileName = ''; %write to this xcel file
-% Note: assumes that your folders where your data are stored are called [workdir Prefix IDs(i) '_processed_bin.set']
+% Note: assumes that your files where your data are stored are called [workdir Prefix IDs(i) '_processed_bin.set']
 % Note: also assumes that you have files available at http://www.mathworks.com/matlabcentral/fileexchange/10465-xlswrite1 for writing data to xcel 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 IDs1 = IDs;
