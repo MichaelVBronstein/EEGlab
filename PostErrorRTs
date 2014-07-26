@@ -1,0 +1,87 @@
+%  Copyright 2014 Michael V. Bronstein
+%  Licensed under the Apache License, Version 2.0 (the "License");
+%  you may not use this file except in compliance with the License.
+%  You may obtain a copy of the License at
+%  http://www.apache.org/licenses/LICENSE-2.0
+%  Unless required by applicable law or agreed to in writing, software
+%  distributed under the License is distributed on an "AS IS" BASIS,
+%  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%  See the License for the specific language governing permissions and
+%  limitations under the License.
+
+workdir = char(''); %the name of the lowest level folder containing all of your data goes here
+PreOrPost = 'post'; %if your data does not have pre/post values, simply set this to ''
+Prefix = '' %write the string you have before your subject ID# in your files here if you have one
+IDs = {}; %write the IDs of the subjects that you wish to process here
+XcelFileName = '' %name of the xcel file that you want to write to
+% Note: assumes that your folders where your data are stored are called [workdir Prefix IDs(i) '_processed_bin.set']
+% Note: also assumes that you have files available at http://www.mathworks.com/matlabcentral/fileexchange/10465-xlswrite1 for writing data to xcel 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+IDs1 = IDs;
+RTs = {};
+for iterations = 1:length(IDs)
+    IDs{iterations}= strcat(Prefix,int2str(cell2mat(IDs(iterations))));
+end
+
+for iterations = 1:length(IDs)
+    [ALLEEG EEG CURRENTSET] = eeglab;
+    SearchForEEGsInThisFolder = char(strcat(workdir, 'Processed'));
+    cd(eval('SearchForEEGsInThisFolder'))
+    if strcmpi(PreOrPost, 'pre') || length(PreOrPost) == 0
+        EEGFiles = '_processed_bin.set';
+    else
+        EEGFiles = '_processed_bin_post.set';
+    end
+    EEG = pop_loadset( 'filename', [IDs{iterations} EEGFiles], 'filepath', eval('SearchForEEGsInThisFolder'));
+    
+%Find All Epoch Numbers that are a correct Epoch following an incorrect one:
+    EpochsOfInterest = [];
+    RTsOfInterest = [];
+    for EpochNumber = 1:size(EEG.epoch,2)-1
+        WrongIfMoreThanZero = (cell2mat(EEG.epoch(EpochNumber).eventbini) == 7) + (cell2mat(EEG.epoch(EpochNumber).eventbini) == 8) + (cell2mat(EEG.epoch(EpochNumber).eventbini) == 11) + (cell2mat(EEG.epoch(EpochNumber).eventbini) == 12); %each number is the bin number of a separate bin representing an incorrect response. Make sure you add/subtract terms so as to cover all of your "wrong" bins
+        CorrectIfMoreThanZero = (cell2mat(EEG.epoch(EpochNumber + 1).eventbini) == 6) + (cell2mat(EEG.epoch(EpochNumber + 1).eventbini) == 5) + (cell2mat(EEG.epoch(EpochNumber + 1).eventbini) == 9) + (cell2mat(EEG.epoch(EpochNumber + 1).eventbini) == 10); %each number after an == is a bin number for a separate bin representing a correct response. Make sure you add/subtract terms so as to cover all of your "right" bins
+        WrongIfMoreThanZero = sum(WrongIfMoreThanZero)
+        CorrectIfMoreThanZero = sum(CorrectIfMoreThanZero)
+        if WrongIfMoreThanZero >= 1 && CorrectIfMoreThanZero >= 1
+            EpochsOfInterest(1,end+1) = EpochNumber + 1;
+        end
+    end
+    EpochsOfInterest %These are the epochs which are a correct trial following an error!
+    rt_latency = eeg_getepochevent(EEG, {'B12, 11(0)', 'B33, 12(5)'}, []); %list ALL possible bin labels here!
+    for GetTheseRts = 1:length(EpochsOfInterest)
+        RTsOfInterest(1,end+1) = rt_latency(EpochsOfInterest(GetTheseRts));
+    end
+    RTsOfInterest %These are all the RTs for the epochs which are a correct trial following an error
+    RTs.(char(IDs(iterations))) = RTsOfInterest;
+end
+
+%Now write descriptives for the results to .xls excel sheet
+SEM = [];
+STDev = [];
+MeanHolder = [];
+MedianHolder = [];
+PreWrite1;
+for NumberOfSubjects = 1:size(IDs,2)
+    SEM(1,end+1) = std(RTs.(char(IDs(NumberOfSubjects))))/sqrt(length(RTs.(char(IDs(NumberOfSubjects)))));
+    STDev(1,end+1) = std(RTs.(char(IDs(NumberOfSubjects))));
+    MeanHolder(1,end+1) = mean(RTs.(char(IDs(NumberOfSubjects))));
+    MedianHolder(1,end+1) = median(RTs.(char(IDs(NumberOfSubjects))));
+    if strcmpi(PreOrPost, 'pre') || length(PreOrPost) == 0
+        SheetToWriteTo = 1;
+    else
+        SheetToWriteTo = 2;
+    end
+    AlreadyThereData = xlsread(XcelFileName, SheetToWriteTo);
+    RowToWriteTo = 2 + find(AlreadyThereData(:,1) == cell2mat(IDs1(NumberOfSubjects))); %put the ID#s of your subjects in column A of the xcel sheet you want to write     %to for this to work
+    xlswrite1(XcelFileName, {SEM(1)}, SheetToWriteTo, strcat('AB',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {STDev(1)}, SheetToWriteTo, strcat('AC',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {MeanHolder(1)}, SheetToWriteTo, strcat('AD',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {MedianHolder(1)}, SheetToWriteTo, strcat('AE',int2str(RowToWriteTo)));
+    
+    %reset the holders for next subject:
+    SEM = [];
+    STDev = [];
+    MeanHolder = [];
+    MedianHolder = [];
+end
+PostWrite1;
