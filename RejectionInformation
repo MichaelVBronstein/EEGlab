@@ -1,0 +1,38 @@
+%  Copyright 2014 Michael V. Bronstein
+%  Licensed under the Apache License, Version 2.0 (the "License");
+%  you may not use this file except in compliance with the License.
+%  You may obtain a copy of the License at
+%  http://www.apache.org/licenses/LICENSE-2.0
+%  Unless required by applicable law or agreed to in writing, software
+%  distributed under the License is distributed on an "AS IS" BASIS,
+%  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%  See the License for the specific language governing permissions and
+%  limitations under the License.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%To use: load a processed_bin.set file into EEGlab, then run.
+%What it does:
+%Identify the channels which were rejected in each rejected epoch. Also
+%identify the channels which caused epochs to be rejected most frequently
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+RejectionData = {}; %RejectionData structure contains list of chans causing rejection by epoch
+CausedRejections = {}; %lists number of times each channel cause an epoch to be rejected in the dataset
+RejectedChannels = [];
+
+%identify epoch numbers which were rejected:
+EpochNumbersRejected = sum(EEG.reject.rejmanualE);
+EpochNumbersRejected = find(EpochNumbersRejected >= 1);
+
+%find out what channel numbers in each of these epochs was rejected:
+for NumberOfRejectedEpochs = 1:length(EpochNumbersRejected)
+ChannelsCausingRejection = find(EEG.reject.rejmanualE(:,EpochNumbersRejected(NumberOfRejectedEpochs)) > 0);
+RejectionData.(strcat('epochnumber',int2str(EpochNumbersRejected(NumberOfRejectedEpochs)))) = ChannelsCausingRejection; 
+for NumberOfRejectedChannels = 1:length(ChannelsCausingRejection)
+RejectedChannels(1,end+1) = ChannelsCausingRejection(NumberOfRejectedChannels);
+end
+end
+
+%find out what channels were the most commonly causing rejection:
+for NumberOfChannels = 1:length(EEG.chanlocs)
+    CausedRejections.(strcat('Chan',int2str(NumberOfChannels))) = {sum(RejectedChannels == NumberOfChannels)}; 
+end
