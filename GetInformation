@@ -1,0 +1,79 @@
+%  Copyright 2014 Michael V. Bronstein
+%  Licensed under the Apache License, Version 2.0 (the "License");
+%  you may not use this file except in compliance with the License.
+%  You may obtain a copy of the License at
+%  http://www.apache.org/licenses/LICENSE-2.0
+%  Unless required by applicable law or agreed to in writing, software
+%  distributed under the License is distributed on an "AS IS" BASIS,
+%  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%  See the License for the specific language governing permissions and
+%  limitations under the License.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+workdir = char(''); %enter the path to the lowest folder level containing the entire experiment's dataset
+filecontainingERPs = 'ERPs\'; %write the part of the file path to the file containing all the ERPs that comes after the part of the path written for workdir above
+PreOrPost = 'pre'; %if your data has pre/post files, write pre/post here. Else, write ''
+NumberOfTrialsPerBlock = 64; %write the number of trials in each block of the task here.
+Prefix = ''; %this is the string which is used as the prefix to subjects' ID numbers when you make their files
+IDs = {}; %list of the IDs of people for whom you want information about their data (e.g., {101 102 103})
+XcelFileName = ''; %write full path of the xcel file you want to write to here.
+% Note: assumes that your files where your data are stored are called [workdir Prefix IDs(i) '_wavg_ap.erp']
+% Note: also assumes that you have files available at http://www.mathworks.com/matlabcentral/fileexchange/10465-xlswrite1 for writing data to xcel 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+IDs1 = IDs; 
+Information = {};
+for iterations = 1:length(IDs)
+    IDs{iterations}= strcat(Prefix,int2str(cell2mat(IDs(iterations))));
+end
+for iterations = 1:length(IDs) 
+
+    %find out how many blocks there were in the Subject's experiment session:
+    SearchForBdfsInThisFolder = char(strcat(workdir, IDs(iterations),'\', PreOrPost));
+    cd(eval('SearchForBdfsInThisFolder')) 
+    BdfFiles = dir('*.bdf'); 
+    NumberOfTrialsBeforeProcessing = length(BdfFiles) * NumberOfTrialsPerBlock; %computes the number of trials in the Subjects experiment session assuming 1 .bdf file/block
+    
+    %find out how many epochs there were in the processed binned EEGset
+    [ALLEEG EEG CURRENTSET] = eeglab; 
+    SearchForEEGSetsInThisFolder = char(strcat(workdir, 'Processed'));
+    cd(eval('SearchForEEGSetsInThisFolder'))
+    if strcmpi(PreOrPost, 'pre') || length(PreOrPost) == 0
+        EEGFiles = '_processed_bin.set'; 
+    else
+        EEGFiles = '_processed_bin_post.set';
+    end
+    EEG = pop_loadset( 'filename', [IDs{iterations} EEGFiles], 'filepath', eval('SearchForEEGSetsInThisFolder'));
+    NumberOfEpochs = length(EEG.epoch);
+    
+    %find out the number of correct/wrong trials from the ERP EVENTLIST structure:
+    SearchForERPsInThisFolder = char(strcat(workdir, filecontainingERPs));
+    cd(eval('SearchForERPsInThisFolder'))
+    if strcmpi(PreOrPost, 'pre') || length(PreOrPost) == 0
+        ERPFiles = '_wavg_ap.erp'; 
+    else
+        ERPFiles = '_wavg_ap_post.erp'; 
+    end    
+    ERP = pop_loaderp( 'filename', [IDs{iterations} ERPFiles], 'filepath', eval('SearchForERPsInThisFolder'), 'Multiload', 'off', 'overwrite', 'off', 'Warning', 'on');
+    NumberOfCorrectTrials = ERP.EVENTLIST.trialsperbin(13); 
+    NumberOfIncorrectTrials = ERP.EVENTLIST.trialsperbin(14);
+    Information.(char(IDs(iterations))).NumberOfCorrectTrials = NumberOfCorrectTrials;
+    Information.(char(IDs(iterations))).NumberOfInCorrectTrials = NumberOfIncorrectTrials;
+    Information.(char(IDs(iterations))).NumberOfEpochs = NumberOfEpochs;
+    Information.(char(IDs(iterations))).NumberOfTrialsBeforeProcessing = NumberOfTrialsBeforeProcessing;
+end
+
+%Export data to xcel
+PreWrite1;
+for NumberOfSubjects = 1:size(IDs,2)
+    if strcmpi(PreOrPost, 'pre') || length(PreOrPost) == 0
+        SheetToWriteTo = 1;
+    else
+        SheetToWriteTo = 2;
+    end 
+    AlreadyThereData = xlsread(XcelFileName, SheetToWriteTo);
+    RowToWriteTo = 2 + find(AlreadyThereData(:,1) == cell2mat(IDs1(NumberOfSubjects)));
+    xlswrite1(XcelFileName, Information.(char(IDs(NumberOfSubjects))).NumberOfEpochs, SheetToWriteTo, strcat('BC',int2str(RowToWriteTo))); 
+    xlswrite1(XcelFileName, Information.(char(IDs(NumberOfSubjects))).NumberOfTrialsBeforeProcessing, SheetToWriteTo, strcat('BD',int2str(RowToWriteTo)));
+end
+PostWrite1
