@@ -32,7 +32,7 @@ for iterations = 1:length(IDs)
     [ALLEEG EEG CURRENTSET] = eeglab;
     SearchForEEGsInThisFolder = char(strcat(workdir, 'Processed'));
     cd(eval('SearchForEEGsInThisFolder'))
-    if strcmpi(PreOrPost, 'pre')
+    if strcmpi(PreOrPost, 'pre') || length(PreOrPost) == 0
         EEGFiles = '_processed_bin.set';
     else
         EEGFiles = '_processed_bin_post.set';
@@ -131,7 +131,7 @@ for NumberOfSubjects = 1:size(IDs,2)
     MedianHolder(1,end+1) = median(RTs.(char(IDs(NumberOfSubjects))).errorcongruent)
     MedianHolder(1,end+1) = median(RTs.(char(IDs(NumberOfSubjects))).errorincongruent)
     
-    if strcmpi(PreOrPost, 'pre')
+    if strcmpi(PreOrPost, 'pre') || length(PreOrPost) == 0
         SheetToWriteTo = 1;
     else
         SheetToWriteTo = 2;
