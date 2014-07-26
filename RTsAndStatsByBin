@@ -1,0 +1,175 @@
+%  Copyright 2014 Michael V. Bronstein
+%  Licensed under the Apache License, Version 2.0 (the "License");
+%  you may not use this file except in compliance with the License.
+%  You may obtain a copy of the License at
+%  http://www.apache.org/licenses/LICENSE-2.0
+%  Unless required by applicable law or agreed to in writing, software
+%  distributed under the License is distributed on an "AS IS" BASIS,
+%  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%  See the License for the specific language governing permissions and
+%  limitations under the License.
+
+workdir = char(''); %enter the path for the lowest level file which contains all of your data
+PreOrPost = ''; %if your data has pre or post values, write "pre" or "post" here. Otherwise, just leave this as ''.
+Prefix = ''; %enter the prefix of your files here.
+IDs = {}; %enter the ID#s of your subjects here.
+BinsOfAllYourCorrectResponses = {'B10, 11(12)', 'B4, 33(9)'} %Change the bins (in the curly brackets) in these next few variables to match your data's bins!
+BinsOfAllYourIncorrectResponses = {'B9, 4(5)', 'B1, 1(11)'} 
+BinsCorrectCongruent = {'B19, 3(2)'}
+BinsIncorrectCongruent = {'B9, 3(9)'}
+BinsCorrectIncongruent = {'B8, 3(2)'}
+BinsIncorrectIncongruent = {'B5, 3(8)'}
+XcelFileName = ''; %write to this xcel file
+% Note: assumes that your folders where your data are stored are called [workdir Prefix IDs(i) '_processed_bin.set']
+% Note: also assumes that you have files available at http://www.mathworks.com/matlabcentral/fileexchange/10465-xlswrite1 for writing data to xcel 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+IDs1 = IDs;
+for iterations = 1:length(IDs)
+    IDs{iterations}= strcat(Prefix,int2str(cell2mat(IDs(iterations))));
+end
+
+for iterations = 1:length(IDs)
+    [ALLEEG EEG CURRENTSET] = eeglab;
+    SearchForEEGsInThisFolder = char(strcat(workdir, 'Processed'));
+    cd(eval('SearchForEEGsInThisFolder'))
+    if strcmpi(PreOrPost, 'pre')
+        EEGFiles = '_processed_bin.set';
+    else
+        EEGFiles = '_processed_bin_post.set';
+    end    
+    EEG = pop_loadset( 'filename', [IDs{iterations} EEGFiles], 'filepath', eval('SearchForEEGsInThisFolder'));
+    
+    rt_latency_1 = [];
+    rt_latency = eeg_getepochevent(EEG, BinsOfAllYourCorrectResponses, []); 
+    for MatrixLength = 1:length(rt_latency)
+        if ~isequal(rt_latency(MatrixLength),0) &&  ~isnan(rt_latency(MatrixLength))
+            rt_latency_1(1,end+1) = rt_latency(MatrixLength)
+        end
+    end
+    if iterations == 1
+        RTs = {};
+    end
+    RTs.(char(IDs(iterations))).allcorrect = rt_latency_1;
+    
+    rt_latency_1 = [];
+    rt_latency = eeg_getepochevent(EEG, BinsOfAllYourIncorrectResponses, []);
+    for MatrixLength = 1:length(rt_latency)
+        if ~isequal(rt_latency(MatrixLength),0) &&  ~isnan(rt_latency(MatrixLength))
+            rt_latency_1(1,end+1) = rt_latency(MatrixLength)
+        end
+    end
+    RTs.(char(IDs(iterations))).allerrors = rt_latency_1;
+    
+    rt_latency_1 = [];
+    rt_latency = eeg_getepochevent(EEG, BinsCorrectCongruent, []);
+    for MatrixLength = 1:length(rt_latency)
+        if ~isequal(rt_latency(MatrixLength),0) &&  ~isnan(rt_latency(MatrixLength))
+            rt_latency_1(1,end+1) = rt_latency(MatrixLength)
+        end
+    end
+    RTs.(char(IDs(iterations))).correctcongruent = rt_latency_1;
+    
+    rt_latency_1 = [];
+    rt_latency = eeg_getepochevent(EEG, BinsCorrectIncongruent, []);
+    for MatrixLength = 1:length(rt_latency)
+        if ~isequal(rt_latency(MatrixLength),0) &&  ~isnan(rt_latency(MatrixLength))
+            rt_latency_1(1,end+1) = rt_latency(MatrixLength)
+        end
+    end
+    RTs.(char(IDs(iterations))).correctincongruent = rt_latency_1;
+    
+    rt_latency_1 = [];
+    rt_latency = eeg_getepochevent(EEG, BinsIncorrectCongruent, []); 
+    for MatrixLength = 1:length(rt_latency)
+        if ~isequal(rt_latency(MatrixLength),0) &&  ~isnan(rt_latency(MatrixLength))
+            rt_latency_1(1,end+1) = rt_latency(MatrixLength)
+        end
+    end
+    RTs.(char(IDs(iterations))).errorcongruent = rt_latency_1;
+    
+    rt_latency_1 = [];
+    rt_latency = eeg_getepochevent(EEG, BinsIncorrectIncongruent, []); 
+    for MatrixLength = 1:length(rt_latency)
+        if ~isequal(rt_latency(MatrixLength),0) &&  ~isnan(rt_latency(MatrixLength))
+            rt_latency_1(1,end+1) = rt_latency(MatrixLength)
+        end
+    end
+    RTs.(char(IDs(iterations))).errorincongruent = rt_latency_1;
+end
+
+%now write the results to a xcel file for easy importing to R/SPSS.
+SEM = [];
+STDev = [];
+MeanHolder = [];
+MedianHolder = [];
+PreWrite1;
+for NumberOfSubjects = 1:size(IDs,2)
+    NumberOfCorrectTrials = length(RTs.(char(IDs(NumberOfSubjects))).allcorrect)
+    NumberOfWrongTrials = length(RTs.(char(IDs(NumberOfSubjects))).allerrors)
+    SEM(1,end+1) = std(RTs.(char(IDs(NumberOfSubjects))).allcorrect)/sqrt(length(RTs.(char(IDs(NumberOfSubjects))).allcorrect))
+    SEM(1,end+1) = std(RTs.(char(IDs(NumberOfSubjects))).allerrors)/sqrt(length(RTs.(char(IDs(NumberOfSubjects))).allerrors))
+    SEM(1,end+1) = std(RTs.(char(IDs(NumberOfSubjects))).correctcongruent)/sqrt(length(RTs.(char(IDs(NumberOfSubjects))).correctcongruent))
+    SEM(1,end+1) = std(RTs.(char(IDs(NumberOfSubjects))).correctincongruent)/sqrt(length(RTs.(char(IDs(NumberOfSubjects))).correctincongruent))
+    SEM(1,end+1) = std(RTs.(char(IDs(NumberOfSubjects))).errorcongruent)/sqrt(length(RTs.(char(IDs(NumberOfSubjects))).errorcongruent))
+    SEM(1,end+1) = std(RTs.(char(IDs(NumberOfSubjects))).errorincongruent)/sqrt(length(RTs.(char(IDs(NumberOfSubjects))).errorincongruent))
+    STDev(1,end+1) = std(RTs.(char(IDs(NumberOfSubjects))).allcorrect)
+    STDev(1,end+1) = std(RTs.(char(IDs(NumberOfSubjects))).allerrors)
+    STDev(1,end+1) = std(RTs.(char(IDs(NumberOfSubjects))).correctcongruent)
+    STDev(1,end+1) = std(RTs.(char(IDs(NumberOfSubjects))).correctincongruent)
+    STDev(1,end+1) = std(RTs.(char(IDs(NumberOfSubjects))).errorcongruent)
+    STDev(1,end+1) = std(RTs.(char(IDs(NumberOfSubjects))).errorincongruent)
+    MeanHolder(1,end+1) = mean(RTs.(char(IDs(NumberOfSubjects))).allcorrect)
+    MeanHolder(1,end+1) = mean(RTs.(char(IDs(NumberOfSubjects))).allerrors)
+    MeanHolder(1,end+1) = mean(RTs.(char(IDs(NumberOfSubjects))).correctcongruent)
+    MeanHolder(1,end+1) = mean(RTs.(char(IDs(NumberOfSubjects))).correctincongruent)
+    MeanHolder(1,end+1) = mean(RTs.(char(IDs(NumberOfSubjects))).errorcongruent)
+    MeanHolder(1,end+1) = mean(RTs.(char(IDs(NumberOfSubjects))).errorincongruent)
+    MedianHolder(1,end+1) = median(RTs.(char(IDs(NumberOfSubjects))).allcorrect)
+    MedianHolder(1,end+1) = median(RTs.(char(IDs(NumberOfSubjects))).allerrors)
+    MedianHolder(1,end+1) = median(RTs.(char(IDs(NumberOfSubjects))).correctcongruent)
+    MedianHolder(1,end+1) = median(RTs.(char(IDs(NumberOfSubjects))).correctincongruent)
+    MedianHolder(1,end+1) = median(RTs.(char(IDs(NumberOfSubjects))).errorcongruent)
+    MedianHolder(1,end+1) = median(RTs.(char(IDs(NumberOfSubjects))).errorincongruent)
+    
+    if strcmpi(PreOrPost, 'pre')
+        SheetToWriteTo = 1;
+    else
+        SheetToWriteTo = 2;
+    end
+    
+    AlreadyThereData = xlsread(XcelFileName, SheetToWriteTo);
+    RowToWriteTo = 2 + find(AlreadyThereData(:,1) == cell2mat(IDs1(NumberOfSubjects)));
+    xlswrite1(XcelFileName, {NumberOfCorrectTrials}, SheetToWriteTo, strcat('B',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {NumberOfWrongTrials}, SheetToWriteTo, strcat('C',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(SEM(1))}, SheetToWriteTo, strcat('D',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(SEM(2))}, SheetToWriteTo, strcat('E',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(SEM(3))}, SheetToWriteTo, strcat('F',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(SEM(4))}, SheetToWriteTo, strcat('G',int2sr(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(SEM(5))}, SheetToWriteTo, strcat('H',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(SEM(6))}, SheetToWriteTo, strcat('I',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(STDev(1))}, SheetToWriteTo, strcat('J',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(STDev(2))}, SheetToWriteTo, strcat('K',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(STDev(3))}, SheetToWriteTo, strcat('L',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(STDev(4))}, SheetToWriteTo, strcat('M',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(STDev(5))}, SheetToWriteTo, strcat('N',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(STDev(6))}, SheetToWriteTo, strcat('O',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(MeanHolder(1))}, SheetToWriteTo, strcat('P',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(MeanHolder(2))}, SheetToWriteTo, strcat('Q',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(MeanHolder(3))}, SheetToWriteTo, strcat('R',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(MeanHolder(4))}, SheetToWriteTo, strcat('S',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(MeanHolder(5))}, SheetToWriteTo, strcat('T',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(MeanHolder(6))}, SheetToWriteTo, strcat('U',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(MedianHolder(1))}, SheetToWriteTo, strcat('V',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(MedianHolder(2))}, SheetToWriteTo, strcat('W',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(MedianHolder(3))}, SheetToWriteTo, strcat('X',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(MedianHolder(4))}, SheetToWriteTo, strcat('Y',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(MedianHolder(5))}, SheetToWriteTo, strcat('Z',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, {(MedianHolder(6))}, SheetToWriteTo, strcat('AA',int2str(RowToWriteTo)));
+
+    %reset the holders for next subject:
+    SEM = [];
+    STDev = [];
+    MeanHolder = [];
+    MedianHolder = [];
+end
+PostWrite1;
