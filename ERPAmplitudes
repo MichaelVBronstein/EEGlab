@@ -1,0 +1,89 @@
+%  Copyright 2014 Michael V. Bronstein
+%  Licensed under the Apache License, Version 2.0 (the "License");
+%  you may not use this file except in compliance with the License.
+%  You may obtain a copy of the License at
+%  http://www.apache.org/licenses/LICENSE-2.0
+%  Unless required by applicable law or agreed to in writing, software
+%  distributed under the License is distributed on an "AS IS" BASIS,
+%  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%  See the License for the specific language governing permissions and
+%  limitations under the License.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%automatically collects avg amplitude data from any subjects you specify in
+%file you specify and writes to ERPAmp structure
+%Please note that the number of every channel/bin must be listed
+%individually for this script to work. So do not use A:B notation.
+
+BinsToGet = [13 14]; %bin numbers that you want the ERP amplitudes for 
+ChannelArray = [30 31 32 33 37 38 47 48]; %change this to the channel numbers that you want ERP amplitudes for 
+workdir = char(''); %enter the lowest level folder containing all of your data
+PreOrPost = 'pre'; %if your data has pre/post values, enter pre/post here. Else, just enter ''
+IDs = {}; %enter the IDs of the subjects whose data you want to process
+XcelFileName = '' %name and full path for the xcel file that you want to write to
+% Note: assumes that your files where your data are stored are called [workdir Prefix IDs(i) '_wavg_ap.erp']
+% Note: also assumes that you have files available at http://www.mathworks.com/matlabcentral/fileexchange/10465-xlswrite1 for writing data to xcel 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+IDs1 = IDs;
+ERPAmp = {};
+for iterations = 1:length(IDs)
+    IDs{iterations}= strcat('ttm',int2str(cell2mat(IDs(iterations))));
+end
+
+for iterations = 1:length(IDs)
+    [ALLEEG EEG CURRENTSET] = eeglab;
+    SearchForERPsInThisFolder = char(strcat(workdir, 'ERPs'));
+    cd(eval('SearchForERPsInThisFolder'))
+    if strcmpi(PreOrPost, 'pre') || length(PreOrPost) == 0
+        ERPFiles = '_wavg_ap.erp';
+    else
+        ERPFiles = '_wavg_ap_post.erp';
+    end    
+    ERP = pop_loaderp( 'filename', [IDs{iterations} ERPFiles], 'filepath', eval('SearchForERPsInThisFolder'), 'Multiload', 'off', 'overwrite', 'off', 'Warning', 'on' );
+    
+    
+    Channels = {};
+    values = pop_geterpvalues( ERP, [ 0 80], BinsToGet, ChannelArray , 'Baseline', [ -200 -50], 'Erpsets',1, 'FileFormat', 'wide', 'Filename', 'TEST.txt', 'Fracreplace', 'NaN', 'Measure', 'meanbl', 'Resolution',3, 'SendtoWorkspace', 'on', 'Warning', 'on' );
+    for NumberOfChannels = 1:length(ChannelArray)
+        Channels{1,end+1} = ERP.chanlocs(ChannelArray(NumberOfChannels)).labels;
+    end
+    for NumberOfBins = 1:length(BinsToGet)
+        for NumberOfChans = 1:length(ChannelArray)
+            ERPAmp.(char(IDs(iterations))).(strcat('bin', int2str(BinsToGet(NumberOfBins)))).(char(Channels{NumberOfChans})) = ERP_MEASURES(NumberOfBins,NumberOfChans);
+        end
+    end
+end
+
+
+%Export to xcel (same spreadsheet as others). You will need to alter this
+%part by hand in order to get it to write different bins/channels
+PreWrite1;
+for NumberOfSubjects = 1:size(IDs,2)
+    %write to xcel .xls file
+    if strcmpi(PreOrPost, 'pre') || length(PreOrPost) == 0
+        SheetToWriteTo = 1;
+    else 
+        SheetToWriteTo = 2;
+    end     
+    AlreadyThereData = xlsread(XcelFileName, SheetToWriteTo);
+    RowToWriteTo = 2 + find(AlreadyThereData(:,1) == cell2mat(IDs1(NumberOfSubjects)));
+    xlswrite1(XcelFileName, ERPAmp.(char(IDs(NumberOfSubjects))).(strcat('bin', '13')).(char(Channels{1})), SheetToWriteTo, strcat('AF',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, ERPAmp.(char(IDs(NumberOfSubjects))).(strcat('bin', '13')).(char(Channels{2})), SheetToWriteTo, strcat('AG',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, ERPAmp.(char(IDs(NumberOfSubjects))).(strcat('bin', '13')).(char(Channels{3})), SheetToWriteTo, strcat('AH',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, ERPAmp.(char(IDs(NumberOfSubjects))).(strcat('bin', '13')).(char(Channels{4})), SheetToWriteTo, strcat('AI',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, ERPAmp.(char(IDs(NumberOfSubjects))).(strcat('bin', '13')).(char(Channels{5})), SheetToWriteTo, strcat('AJ',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, ERPAmp.(char(IDs(NumberOfSubjects))).(strcat('bin', '13')).(char(Channels{6})), SheetToWriteTo, strcat('AK',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, ERPAmp.(char(IDs(NumberOfSubjects))).(strcat('bin', '13')).(char(Channels{7})), SheetToWriteTo, strcat('AL',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, ERPAmp.(char(IDs(NumberOfSubjects))).(strcat('bin', '13')).(char(Channels{8})), SheetToWriteTo, strcat('AM',int2str(RowToWriteTo)));
+    
+    xlswrite1(XcelFileName, ERPAmp.(char(IDs(NumberOfSubjects))).(strcat('bin', '14')).(char(Channels{1})), SheetToWriteTo, strcat('AN',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, ERPAmp.(char(IDs(NumberOfSubjects))).(strcat('bin', '14')).(char(Channels{2})), SheetToWriteTo, strcat('AO',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, ERPAmp.(char(IDs(NumberOfSubjects))).(strcat('bin', '14')).(char(Channels{3})), SheetToWriteTo, strcat('AP',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, ERPAmp.(char(IDs(NumberOfSubjects))).(strcat('bin', '14')).(char(Channels{4})), SheetToWriteTo, strcat('AQ',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, ERPAmp.(char(IDs(NumberOfSubjects))).(strcat('bin', '14')).(char(Channels{5})), SheetToWriteTo, strcat('AR',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, ERPAmp.(char(IDs(NumberOfSubjects))).(strcat('bin', '14')).(char(Channels{6})), SheetToWriteTo, strcat('AS',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, ERPAmp.(char(IDs(NumberOfSubjects))).(strcat('bin', '14')).(char(Channels{7})), SheetToWriteTo, strcat('AT',int2str(RowToWriteTo)));
+    xlswrite1(XcelFileName, ERPAmp.(char(IDs(NumberOfSubjects))).(strcat('bin', '14')).(char(Channels{8})), SheetToWriteTo, strcat('AU',int2str(RowToWriteTo)));
+end
+PostWrite1;
