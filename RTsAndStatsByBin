@@ -138,7 +138,7 @@ for NumberOfSubjects = 1:size(IDs,2)
     end
     
     AlreadyThereData = xlsread(XcelFileName, SheetToWriteTo);
-    RowToWriteTo = 2 + find(AlreadyThereData(:,1) == cell2mat(IDs1(NumberOfSubjects)));
+    RowToWriteTo = 2 + find(AlreadyThereData(:,1) == cell2mat(IDs1(NumberOfSubjects))); %put the ID#s of your subjects in column A of the xcel sheet you want to write to for this to work
     xlswrite1(XcelFileName, {NumberOfCorrectTrials}, SheetToWriteTo, strcat('B',int2str(RowToWriteTo)));
     xlswrite1(XcelFileName, {NumberOfWrongTrials}, SheetToWriteTo, strcat('C',int2str(RowToWriteTo)));
     xlswrite1(XcelFileName, {(SEM(1))}, SheetToWriteTo, strcat('D',int2str(RowToWriteTo)));
