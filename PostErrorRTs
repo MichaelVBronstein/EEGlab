@@ -13,7 +13,7 @@ workdir = char(''); %the name of the lowest level folder containing all of your 
 PreOrPost = 'post'; %if your data does not have pre/post values, simply set this to ''
 Prefix = '' %write the string you have before your subject ID# in your files here if you have one
 IDs = {}; %write the IDs of the subjects that you wish to process here
-XcelFileName = '' %name of the xcel file that you want to write to
+XcelFileName = '' %name and full path of the xcel file that you want to write to
 % Note: assumes that your files where your data are stored are called [workdir Prefix IDs(i) '_processed_bin.set']
 % Note: also assumes that you have files available at http://www.mathworks.com/matlabcentral/fileexchange/10465-xlswrite1 for writing data to xcel 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
