@@ -1,0 +1,64 @@
+%gets RTs for subjects based on the event strings that you specify below.
+
+%this script works with the _emcp.set file (the last file before things
+%start getting put in the processed folder)
+
+EventString = {{'3'; '16'} {'4'}};
+
+%EventString should be as set of cells filled with strings (e.g., {{'1';'2'} {'8'}}  ).
+%If there are 2 members in a given set of {}, then the program will find the RTs for the second event
+%code when and only when the second event code listed is preceded by the first one listed in a single epoch.
+%if there is only 1 member in a give set of brackets, then the program will
+%give the RTs for that event code whenever it appears in an epoch
+%regardless of what preceedes it.
+EVENTS = {};
+EventRTs = {};
+RTsByArgIn = {}
+%RTsByArgIn.ArgIn will hold the RTs resulting from each set of inner
+%brackets in EventString seperately. So for the set of eventcodes in the
+%first brackets in EventString, the relevant RTs will be in
+%RTsByArgIn.ArgIn1...those relevant to the set of eventcodes in the second
+%brackets will be in RTsByArgIn.ArgIn2. Just use the A = cell2mat (RTsByArgIn.ArgIn) command on
+%any RTsByArgIn subfield in order to be able to process it for decriptive
+%stats.
+for NargIn = 1:size(EventString,2)
+    if length(EventString{NargIn}) == 2
+        EventString1 = EventString{NargIn}';
+        PrecedingEventString = EventString1{1};
+        EventString1 = EventString1{2};
+    elseif length(EventString{NargIn}) == 1
+        EventString1 = EventString{NargIn}';
+        EventString1 = EventString1{1};
+        PrecedingEventString = NaN;
+    else
+        display('WARNING: CHECK YOUR INPUTS')
+    end
+    for NumberOfEvents = 1:size(EEG.epoch,2)
+        EVENTS.(strcat('EpochNumber', int2str(NumberOfEvents))) = find(strcmp(EEG.epoch(NumberOfEvents).eventtype, EventString1))
+        if ~isnan(PrecedingEventString)
+            for Preceding = 1:length(EEG.epoch(NumberOfEvents).eventtype)
+                if (EVENTS.(strcat('EpochNumber', int2str(NumberOfEvents)))-Preceding) > 0
+                    if find(strcmp(EEG.epoch(NumberOfEvents).eventtype, PrecedingEventString)) == (EVENTS.(strcat('EpochNumber', int2str(NumberOfEvents)))-Preceding)
+                        EventRTs.(strcat('EpochNumber', int2str(NumberOfEvents))).(strcat('EventString', PrecedingEventString, 'Then', EventString1)) = EEG.epoch(NumberOfEvents).eventlatency(EVENTS.(strcat('EpochNumber', int2str(NumberOfEvents))))
+                        try
+                            RTsByArgIn.(strcat('ArgIn',int2str(NargIn')))(1, end + 1) =  EventRTs.(strcat('EpochNumber', int2str(NumberOfEvents))).(strcat('EventString', PrecedingEventString, 'Then', EventString1))
+                        catch
+                            RTsByArgIn.(strcat('ArgIn',int2str(NargIn)))(1) =  EventRTs.(strcat('EpochNumber', int2str(NumberOfEvents))).(strcat('EventString', PrecedingEventString, 'Then', EventString1))
+                        end
+                    end
+                end
+            end
+        else
+            if size(EEG.epoch(NumberOfEvents).eventlatency(EVENTS.(strcat('EpochNumber', int2str(NumberOfEvents)))),2) > 0
+                EventRTs.(strcat('EpochNumber', int2str(NumberOfEvents))).(strcat('EventString', EventString1)) = EEG.epoch(NumberOfEvents).eventlatency(EVENTS.(strcat('EpochNumber', int2str(NumberOfEvents))))
+                try
+                    RTsByArgIn.(strcat('ArgIn',int2str(NargIn')))(1, end + 1) = EventRTs.(strcat('EpochNumber', int2str(NumberOfEvents))).(strcat('EventString', EventString1))
+                catch
+                    RTsByArgIn.(strcat('ArgIn',int2str(NargIn)))(1) = EventRTs.(strcat('EpochNumber', int2str(NumberOfEvents))).(strcat('EventString', EventString1))
+                end
+            end
+        end
+    end
+    RTEVENTRTs = {};
+    EVENTS = {};
+end
